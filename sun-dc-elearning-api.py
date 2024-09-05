@@ -24,11 +24,15 @@ SOFTWARE.
 
 import os
 import sys
+import argparse
 import hashlib
 import requests
 from typing import Any
 from io import BufferedReader
 from concurrent.futures import ThreadPoolExecutor
+from openpyxl import load_workbook
+import json
+from pathlib import Path
 
 class SunDcClient:
     def __init__(self, url: str) -> None:
@@ -155,21 +159,54 @@ class SunDcClient:
                                                                                                                                                 'type': str(uploadResponseJson['fileType'])})
         self._sanityCheckResponse_JSON(response)
 
-        return response.json()['data'][0]['id']  # resourceList[n].id available for use
+        # resourceList[n].id available for use
+        return response.json()['data'][0]['id']
 
 
 if __name__ == '__main__':
-    client = SunDcClient('http://***REMOVED***')
-    token = client.login('***REMOVED***', '***REMOVED***')
+    # client = SunDcClient('http://***REMOVED***')
+    # token = client.login('***REMOVED***', '***REMOVED***')
 
+    # categories = client.getQuestionCategories_DepthOne(token)
+    # print(str(categories))
+
+    # with open('1707063638_new_Снимок экрана (1772).png', 'rb') as fd:
+    #     resID = client.uploadFile(token, fd, '1707063638_new_Снимок экрана (1772).png')
+    #     print(resID)
+
+    # questionID = client.createQuestion_FillInTheBlank(token, categories['系统测试'], 3, '这是 Python 测试 - 文件上传', '由 sun-dc-elearning-api.py 创建的问题', '这是答案', '这是答案解析', [resID])
+    # print(questionID)
+
+    # client.updateQuestionStates(token, {str(questionID): True})
+
+
+    parser = argparse.ArgumentParser(prog='sun-dc-elearning 填空题批量上传脚本', epilog='Brought to you with ❤️ by shezik')
+    parser.add_argument('baseUrl', type=str, metavar='平台地址', help='sun-dc-learning 平台的主页地址。')
+    parser.add_argument('username', type=str, metavar='用户名', help='具有管理权限的平台用户名。')
+    parser.add_argument('password', type=str, metavar='密码', help='用户密码。')
+    parser.add_argument('templatePath', type=str, metavar='XLSX 文件路径', help='编辑完成的表格模板的路径。')
+    parser.add_argument('--publish', action='store_true', dest='publish', help='自动发布已导入的题目。')
+    args = parser.parse_args()
+
+    wb = load_workbook(filename=args.templatePath, read_only=True, data_only=True)
+    ws = wb.active
+    client = SunDcClient(args.baseUrl)
+    token = client.login(args.username, args.password)
     categories = client.getQuestionCategories_DepthOne(token)
-    print(str(categories))
+    
+    for entry in tuple(ws.rows)[1:]:  # 分类	难度（1-5）	标题	详情	答案	解析	附件本地路径（纯文本或 JSON 数组）
+        resourceList: list[str] = []    
+        pathOrPathJson = entry[6].value
+        if pathOrPathJson is not None:
+            try:
+                filePaths = json.loads(pathOrPathJson)
+            except:
+                filePaths = [pathOrPathJson]
+            assert(type(filePaths) is list)
+            for filePath in filePaths:
+                with open(filePath, 'rb') as fd:
+                    resourceList.append(client.uploadFile(token, fd, Path(fd.name).name))
 
-    with open('1707063638_new_Снимок экрана (1772).png', 'rb') as fd:
-        resID = client.uploadFile(token, fd, '1707063638_new_Снимок экрана (1772).png')
-        print(resID)
-
-    questionID = client.createQuestion_FillInTheBlank(token, categories['系统测试'], 3, '这是 Python 测试 - 文件上传', '由 sun-dc-elearning-api.py 创建的问题', '这是答案', '这是答案解析', [resID])
-    print(questionID)
-
-    client.updateQuestionStates(token, {str(questionID): True})
+        questionID = client.createQuestion_FillInTheBlank(token, categories[entry[0].value], entry[1].value, entry[2].value, entry[3].value, entry[4].value, entry[5].value, resourceList)
+        if args.publish:
+            client.updateQuestionStates(token, {questionID: True})
