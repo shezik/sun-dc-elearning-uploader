@@ -1,12 +1,10 @@
-from concurrent.futures import ThreadPoolExecutor
-import enum
-from typing import Any
-import requests
-# import json
-import hashlib
-import sys
-from io import BufferedReader
 import os
+import sys
+import hashlib
+import requests
+from typing import Any
+from io import BufferedReader
+from concurrent.futures import ThreadPoolExecutor
 
 class SunDcClient:
     def __init__(self, url: str) -> None:
