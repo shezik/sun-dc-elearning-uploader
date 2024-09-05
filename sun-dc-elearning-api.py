@@ -207,6 +207,6 @@ if __name__ == '__main__':
                 with open(filePath, 'rb') as fd:
                     resourceList.append(client.uploadFile(token, fd, Path(fd.name).name))
 
-        questionID = client.createQuestion_FillInTheBlank(token, categories[entry[0].value], entry[1].value, entry[2].value, entry[3].value, entry[4].value, entry[5].value, resourceList)
+        questionID = client.createQuestion_FillInTheBlank(token, categories[entry[0].value], entry[1].value, entry[2].value, entry[3].value, entry[4].value, entry[5].value if entry[5].value is not None else '', resourceList)
         if args.publish:
             client.updateQuestionStates(token, {questionID: True})
