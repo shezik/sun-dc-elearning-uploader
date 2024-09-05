@@ -6,8 +6,6 @@ import hashlib
 from minio import Minio
 import sys
 
-from sympy import true
-
 class SunDcClient:
     def __init__(self, url: str) -> None:
         self.url: str = url
