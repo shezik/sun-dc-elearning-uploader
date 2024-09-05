@@ -1,3 +1,27 @@
+'''
+MIT License
+
+Copyright (c) 2024 Kerry Shen
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+'''
+
 import os
 import sys
 import hashlib
@@ -114,7 +138,6 @@ class SunDcClient:
             for i, chunkURL in enumerate(chunkURLs):
                 chunkBytes: bytes = fileHandle.read(chunkSize)
                 futures.append(executor.submit(self._uploadChunk, token, i, chunkURL, chunkBytes))  # type: ignore
-
             for future in futures:  # type: ignore
                 future.result()  # type: ignore
 
@@ -146,7 +169,7 @@ if __name__ == '__main__':
         resID = client.uploadFile(token, fd, '1707063638_new_Снимок экрана (1772).png')
         print(resID)
 
-    questionID = client.createQuestion_FillInTheBlank(token, categories['系统测试'], 3, '这是 Python 测试 - 发布后编辑', '由 sun-dc-elearning-api.py 创建的第一个问题', '这是答案', '这是答案解析', [resID])
+    questionID = client.createQuestion_FillInTheBlank(token, categories['系统测试'], 3, '这是 Python 测试 - 文件上传', '由 sun-dc-elearning-api.py 创建的问题', '这是答案', '这是答案解析', [resID])
     print(questionID)
 
     client.updateQuestionStates(token, {str(questionID): True})
