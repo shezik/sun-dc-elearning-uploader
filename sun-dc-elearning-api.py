@@ -145,9 +145,10 @@ class SunDcClient:
                 futures.append(executor.submit(self._uploadChunk, token, i + 1, chunkURL, chunkBytes))  # type: ignore
             for i, future in enumerate(futures):  # type: ignore
                 future.result()  # type: ignore
-                print('Uploading file {}: {}/{} chunks done'.format(remoteFilename, i + 1, chunkNum))
+                print('Uploading \'{}\': {:>{}}/{} chunks done'.format(remoteFilename, i + 1, len(str(chunkNum)), chunkNum), end='\r')
 
         # Finish uploading chunks
+        print()
         response = requests.get(self.url + '/resource/file/completeMultipartUpload', headers={'side': '1', 'Token': token}, params={'objectName': remoteFilename,
                                                                                                                                     'uploadId': uploadID,
                                                                                                                                     'uuid': uploadUUID,
@@ -198,6 +199,9 @@ if __name__ == '__main__':
     categories = client.getQuestionCategories_DepthOne(token)
     
     for entry in tuple(ws.rows)[1:]:  # 分类	难度（1-5）	标题	详情	答案	解析	附件本地路径（纯文本或 JSON 数组）
+        answerTitle = str(entry[4].value)
+        print('Creating question: \'{}\''.format(answerTitle))
+
         # Upload files
         resourceList: list[str] = []    
         pathOrPathJson = entry[6].value
@@ -211,12 +215,13 @@ if __name__ == '__main__':
                 with open(filePath, 'rb') as fd:
                     resourceList.append(client.uploadFile(token, fd, Path(fd.name).name))
 
+        # Create question
         questionID = client.createQuestion_FillInTheBlank(token,
                                                           categoryId=categories[str(entry[0].value)],
                                                           difficulty=int(str(entry[1].value)) if entry[1].value is not None else 0,
                                                           questionTitle=str(entry[2].value),
                                                           questionDescription=str(entry[3].value),
-                                                          answerTitle=str(entry[4].value),
+                                                          answerTitle=answerTitle,
                                                           answerContent=str(entry[5].value) if entry[5].value is not None else '',
                                                           resourceList=resourceList)
         if args.publish:
