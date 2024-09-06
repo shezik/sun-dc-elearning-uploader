@@ -37,7 +37,7 @@ from pathlib import Path
 class SunDcClient:
     def __init__(self, url: str) -> None:
         self.url: str = url
-        self.maxUploadWorkers: int = 8
+        self.maxUploadWorkers: int = 16
 
     @staticmethod
     def _getFuncName() -> str:
@@ -133,7 +133,8 @@ class SunDcClient:
         responseJson = response.json()
         uploadID: str = responseJson['uploadId']
         uploadUUID: str = responseJson['uuid']
-        chunkURLs: list[str] = [responseJson[key] for key in sorted(responseJson.keys()) if key.startswith('chunk_')]
+        chunkURLSortedKeys: list[str] = sorted([key for key in responseJson.keys() if key.startswith('chunk_')], key = lambda x: int(x.split('_')[-1]))
+        chunkURLs: list[str] = [responseJson[key] for key in chunkURLSortedKeys]
         assert(len(chunkURLs) == chunkNum)
 
         # Start uploading chunks
