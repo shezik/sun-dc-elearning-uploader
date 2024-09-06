@@ -33,6 +33,7 @@ from concurrent.futures import ThreadPoolExecutor
 from openpyxl import load_workbook
 import json
 from pathlib import Path
+from urllib.parse import urlparse, urljoin
 
 class SunDcClient:
     def __init__(self, url: str) -> None:
@@ -58,7 +59,7 @@ class SunDcClient:
             raise Exception('Method \'{}\' failed: Server did not return HTTP 200 OK {}'.format(callerFuncName, additionalText))
 
     def login(self, username: str, password: str) -> str:
-        response = requests.post(self.url + '/auth/login',
+        response = requests.post(urljoin(self.url, '/auth/login'),
                                  headers={'side': '3'},
                                  json={'index': '3',
                                        'username': username,
@@ -67,7 +68,7 @@ class SunDcClient:
         return response.json()['data']['token']
     
     def getQuestionCategories_DepthOne(self, token: str) -> dict[str, str]:
-        response = requests.get(self.url + '/biz/common/dict/basicDict/selectMenu/FLAG_QUESTION_BANK',
+        response = requests.get(urljoin(self.url, '/biz/common/dict/basicDict/selectMenu/FLAG_QUESTION_BANK'),
                                 headers={'side': '1', 'Token': token})
         self._sanityCheckResponse_JSON(response)
         categoriesObject: dict[str, Any] = {}
@@ -90,7 +91,7 @@ class SunDcClient:
                                     'fillItem.rightAnswer': answerTitle,
                                     'fillItem.itemTitle': '正确答案'}
         formData.update({'resourceList[{}].id'.format(index): id for index, id in enumerate(resourceList)})
-        response = requests.post(self.url + '/biz/admin/questionBank/question', headers={'side': '1', 'Token': token}, data=formData)
+        response = requests.post(urljoin(self.url, '/biz/admin/questionBank/question'), headers={'side': '1', 'Token': token}, data=formData)
         self._sanityCheckResponse_JSON(response)
         return response.json()['data']  # Question ID
 
@@ -106,12 +107,12 @@ class SunDcClient:
                                     'fillItem.itemTitle': '正确答案',
                                     'question.questionID': questionID}
         formData.update({'resourceList[{}].id'.format(index): id for index, id in enumerate(resourceList)})
-        response = requests.post(self.url + '/biz/admin/questionBank/question/update', headers={'side': '1', 'Token': token}, data=formData)
+        response = requests.post(urljoin(self.url, '/biz/admin/questionBank/question/update'), headers={'side': '1', 'Token': token}, data=formData)
         self._sanityCheckResponse_JSON(response)
 
     def updateQuestionStates(self, token: str, IDandIsPublished: dict[str, bool]) -> None:
         data = [{'question': {'questionID': questionID, 'questionState': '1' if isPublished else '2'}} for questionID, isPublished in IDandIsPublished.items()]
-        response = requests.post(self.url + '/biz/admin/questionBank/question/updateQuestionState', headers={'side': '1', 'Token': token}, json=data)
+        response = requests.post(urljoin(self.url, '/biz/admin/questionBank/question/updateQuestionState'), headers={'side': '1', 'Token': token}, json=data)
         self._sanityCheckResponse_JSON(response)
 
     def _uploadChunk(self, token: str, chunkID: int, chunkURL: str, chunkBytes: bytes) -> None:
@@ -126,7 +127,7 @@ class SunDcClient:
         chunkNum: int = (fileSize + chunkSize - 1) // chunkSize
 
         # Get URLs from server to PUT 5 MB chunks onto
-        response = requests.get(self.url + '/resource/file/createMultipartUpload', headers={'side': '1', 'Token': token}, params={'fileName': remoteFilename,
+        response = requests.get(urljoin(self.url, '/resource/file/createMultipartUpload'), headers={'side': '1', 'Token': token}, params={'fileName': remoteFilename,
                                                                                                                                   'chunkSize': chunkNum,
                                                                                                                                   'bucketName': 'resource'})
         self._sanityCheckResponse_NonJSON(response)
@@ -149,7 +150,7 @@ class SunDcClient:
 
         # Finish uploading chunks
         print()
-        response = requests.get(self.url + '/resource/file/completeMultipartUpload', headers={'side': '1', 'Token': token}, params={'objectName': remoteFilename,
+        response = requests.get(urljoin(self.url, '/resource/file/completeMultipartUpload'), headers={'side': '1', 'Token': token}, params={'objectName': remoteFilename,
                                                                                                                                     'uploadId': uploadID,
                                                                                                                                     'uuid': uploadUUID,
                                                                                                                                     'bucketName': 'resource'})
@@ -157,7 +158,7 @@ class SunDcClient:
         uploadResponseJson = response.json()
 
         # insertResource
-        response = requests.post(self.url + '/resource/admin/resource/ossResource/insertResource', headers={'side': '1', 'Token': token}, json={'fileList': [uploadResponseJson],
+        response = requests.post(urljoin(self.url, '/resource/admin/resource/ossResource/insertResource'), headers={'side': '1', 'Token': token}, json={'fileList': [uploadResponseJson],
                                                                                                                                                 'categoryId': '1776867718493577217',  # Hard-coded nonsense
                                                                                                                                                 'type': str(uploadResponseJson['fileType'])})
         self._sanityCheckResponse_JSON(response)
@@ -183,8 +184,8 @@ if __name__ == '__main__':
     # client.updateQuestionStates(token, {str(questionID): True})
 
 
-    parser = argparse.ArgumentParser(prog='sun-dc-elearning 填空题批量上传脚本', epilog='Brought to you with ❤️ by shezik')
-    parser.add_argument('baseUrl', type=str, metavar='平台地址', help='sun-dc-elearning 平台的主页地址。')
+    parser = argparse.ArgumentParser(description='sun-dc-elearning 填空题批量上传脚本', epilog='Brought to you with ❤️ by shezik')
+    parser.add_argument('baseUrl', type=str, metavar='平台地址', help='sun-dc-elearning 平台的主页地址，默认协议为 HTTP。')
     parser.add_argument('username', type=str, metavar='用户名', help='具有管理权限的平台用户名。')
     parser.add_argument('password', type=str, metavar='密码', help='用户密码。')
     parser.add_argument('templatePath', type=str, metavar='XLSX 文件路径', help='编辑完成的表格模板的路径。')
@@ -194,13 +195,13 @@ if __name__ == '__main__':
     wb = load_workbook(filename=args.templatePath, read_only=True, data_only=True)
     assert(wb.active is not None)
     ws = wb.active
-    client = SunDcClient(args.baseUrl)
+    client = SunDcClient('http://' + args.baseUrl if not urlparse(args.baseUrl).scheme else args.baseUrl)  # type: ignore
     token = client.login(args.username, args.password)
     categories = client.getQuestionCategories_DepthOne(token)
     
     for entry in tuple(ws.rows)[1:]:  # 分类	难度（1-5）	标题	详情	答案	解析	附件本地路径（纯文本或 JSON 数组）
         answerTitle = str(entry[4].value)
-        print('Creating question: \'{}\''.format(answerTitle))
+        print('Creating {}question: \'{}\''.format('and publishing ' if args.publish else '', answerTitle))
 
         # Upload files
         resourceList: list[str] = []    
@@ -226,3 +227,5 @@ if __name__ == '__main__':
                                                           resourceList=resourceList)
         if args.publish:
             client.updateQuestionStates(token, {questionID: True})
+
+    print()
