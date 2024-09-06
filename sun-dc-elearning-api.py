@@ -168,8 +168,8 @@ class SunDcClient:
 
 
 if __name__ == '__main__':
-    # client = SunDcClient('http://***REMOVED***')
-    # token = client.login('***REMOVED***', '***REMOVED***')
+    # client = SunDcClient('http://123.123.123.123')
+    # token = client.login('1234567890', '123456')
 
     # categories = client.getQuestionCategories_DepthOne(token)
     # print(str(categories))
