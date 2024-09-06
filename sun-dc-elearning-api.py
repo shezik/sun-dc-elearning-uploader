@@ -183,7 +183,7 @@ if __name__ == '__main__':
 
 
     parser = argparse.ArgumentParser(prog='sun-dc-elearning 填空题批量上传脚本', epilog='Brought to you with ❤️ by shezik')
-    parser.add_argument('baseUrl', type=str, metavar='平台地址', help='sun-dc-learning 平台的主页地址。')
+    parser.add_argument('baseUrl', type=str, metavar='平台地址', help='sun-dc-elearning 平台的主页地址。')
     parser.add_argument('username', type=str, metavar='用户名', help='具有管理权限的平台用户名。')
     parser.add_argument('password', type=str, metavar='密码', help='用户密码。')
     parser.add_argument('templatePath', type=str, metavar='XLSX 文件路径', help='编辑完成的表格模板的路径。')
@@ -191,24 +191,33 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     wb = load_workbook(filename=args.templatePath, read_only=True, data_only=True)
+    assert(wb.active is not None)
     ws = wb.active
     client = SunDcClient(args.baseUrl)
     token = client.login(args.username, args.password)
     categories = client.getQuestionCategories_DepthOne(token)
     
     for entry in tuple(ws.rows)[1:]:  # 分类	难度（1-5）	标题	详情	答案	解析	附件本地路径（纯文本或 JSON 数组）
+        # Upload files
         resourceList: list[str] = []    
         pathOrPathJson = entry[6].value
         if pathOrPathJson is not None:
             try:
-                filePaths = json.loads(pathOrPathJson)
-            except:
-                filePaths = [pathOrPathJson]
-            assert(type(filePaths) is list)
+                filePaths = json.loads(str(pathOrPathJson))
+                assert(type(filePaths) is list)
+            except (json.decoder.JSONDecodeError, SyntaxError):
+                filePaths: list[str] = [str(pathOrPathJson)]
             for filePath in filePaths:
                 with open(filePath, 'rb') as fd:
                     resourceList.append(client.uploadFile(token, fd, Path(fd.name).name))
 
-        questionID = client.createQuestion_FillInTheBlank(token, categories[entry[0].value], entry[1].value, entry[2].value, entry[3].value, entry[4].value, entry[5].value if entry[5].value is not None else '', resourceList)
+        questionID = client.createQuestion_FillInTheBlank(token,
+                                                          categoryId=categories[str(entry[0].value)],
+                                                          difficulty=int(str(entry[1].value)) if entry[1].value is not None else 0,
+                                                          questionTitle=str(entry[2].value),
+                                                          questionDescription=str(entry[3].value),
+                                                          answerTitle=str(entry[4].value),
+                                                          answerContent=str(entry[5].value) if entry[5].value is not None else '',
+                                                          resourceList=resourceList)
         if args.publish:
             client.updateQuestionStates(token, {questionID: True})
