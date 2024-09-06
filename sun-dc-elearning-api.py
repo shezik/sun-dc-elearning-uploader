@@ -143,8 +143,9 @@ class SunDcClient:
             for i, chunkURL in enumerate(chunkURLs):
                 chunkBytes: bytes = fileHandle.read(chunkSize)
                 futures.append(executor.submit(self._uploadChunk, token, i, chunkURL, chunkBytes))  # type: ignore
-            for future in futures:  # type: ignore
+            for i, future in enumerate(futures):  # type: ignore
                 future.result()  # type: ignore
+                print('Uploading file {}: {}/{} chunks done'.format(remoteFilename, i + 1, chunkNum))
 
         # Finish uploading chunks
         response = requests.get(self.url + '/resource/file/completeMultipartUpload', headers={'side': '1', 'Token': token}, params={'objectName': remoteFilename,
