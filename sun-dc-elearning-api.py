@@ -142,7 +142,7 @@ class SunDcClient:
         with ThreadPoolExecutor(max_workers=self.maxUploadWorkers) as executor:
             for i, chunkURL in enumerate(chunkURLs):
                 chunkBytes: bytes = fileHandle.read(chunkSize)
-                futures.append(executor.submit(self._uploadChunk, token, i, chunkURL, chunkBytes))  # type: ignore
+                futures.append(executor.submit(self._uploadChunk, token, i + 1, chunkURL, chunkBytes))  # type: ignore
             for i, future in enumerate(futures):  # type: ignore
                 future.result()  # type: ignore
                 print('Uploading file {}: {}/{} chunks done'.format(remoteFilename, i + 1, chunkNum))
