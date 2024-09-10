@@ -200,8 +200,8 @@ if __name__ == '__main__':
     categories = client.getQuestionCategories_DepthOne(token)
     
     for entry in tuple(ws.rows)[1:]:  # 分类	难度（1-5）	标题	详情	答案	解析	附件本地路径（纯文本或 JSON 数组）
-        answerTitle = str(entry[4].value)
-        print('Creating {}question: \'{}\''.format('and publishing ' if args.publish else '', answerTitle))
+        questionTitle = str(entry[2].value)
+        print('Creating {}question: \'{}\''.format('and publishing ' if args.publish else '', questionTitle))
 
         # Upload files
         resourceList: list[str] = []    
@@ -220,9 +220,9 @@ if __name__ == '__main__':
         questionID = client.createQuestion_FillInTheBlank(token,
                                                           categoryId=categories[str(entry[0].value)],
                                                           difficulty=int(str(entry[1].value)) if entry[1].value is not None else 0,
-                                                          questionTitle=str(entry[2].value),
+                                                          questionTitle=questionTitle,
                                                           questionDescription=str(entry[3].value),
-                                                          answerTitle=answerTitle,
+                                                          answerTitle=str(entry[4].value),
                                                           answerContent=str(entry[5].value) if entry[5].value is not None else '',
                                                           resourceList=resourceList)
         if args.publish:
